@@ -16,8 +16,8 @@ Work is based on https://gist.github.com/sonicdee/bf5f655669ef6900b72c54f0c7696d
 ```
 and install all requirements.
 ```sh
-   $ sudo apt-get install python3-pip
-   $ sudo pip install spotipy
+   sudo apt-get install python3-pip
+   sudo pip install spotipy
 ```
 
 ### Create a cards.txt
