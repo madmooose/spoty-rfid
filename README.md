@@ -11,39 +11,39 @@ Work is based on https://gist.github.com/sonicdee/bf5f655669ef6900b72c54f0c7696d
 
 ### clone to home-directory
 
-```
-   $ git clone https://github.com/madmooose/spoty-rfid
+```sh
+   git clone https://github.com/madmooose/spoty-rfid
 ```
 and install all requirements.
-```
+```sh
    $ sudo apt-get install python3-pip
    $ sudo pip install spotipy
 ```
 
 ### Create a cards.txt
 Format is like that
-```
+```txt
 [number of rfid-tag] [spotify-uri] # here's some space for comments
 ```
 
 ### Create udev-rule to own the rfid-reader
 Run
 ```sh 
-  $ lsusb
-``
-and remember both numbers behind ID. In `/etc/udev/rules.d` create a file called `50-usb-rfidreader.rules` and and the following line
+  lsusb
 ```
+and remember both numbers behind ID. In `/etc/udev/rules.d` create a file called `50-usb-rfidreader.rules` and and the following line
+```txt
    SUBSYSTEMS=="usb", ATTRS{idVendor}=="[numer1]", ATTRS{idProduct}=="[number2]", MODE="0666"
 ```
 
 Now reload udev.
 ```sh
-   $ sudo udevadm control --reload-rules
-   $ sudo udevadm trigger
+   sudo udevadm control --reload-rules
+   sudo udevadm trigger
 ```
 Check if you have read-and-write-access.
 ```sh
-   $ ls -l /dev/usb/hidraw0
+   ls -l /dev/usb/hidraw0
 ```
 
 ### Configure the spotify
@@ -54,7 +54,7 @@ Now you have to add the collected values to `spotycon.py`.
 
 We will now run
 ```sh
-   $ ./RfSpoty.py
+   ./RfSpoty.py
 ```
 for the first time to create the `.cache` file where the access token is stored. You have to follow the URL and paste the URL of your browser back into your command line.
 
@@ -62,7 +62,7 @@ for the first time to create the `.cache` file where the access token is stored.
 
 Copy `spoty-rfid.service` to `/etc/system.d/system/` and activate it
 ```sh
-  $ sudo cp spoty-rfid.service /etc/system.d/system
-  $ sudo systemctl enable spoty-rfid
+  sudo cp spoty-rfid.service /etc/system.d/system
+  sudo systemctl enable spoty-rfid
+  sudo systemctl start spoty-rfid
 ```
-  $ sudo systemctl start spoty-rfid
