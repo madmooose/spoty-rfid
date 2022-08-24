@@ -44,6 +44,14 @@ def connect():
     sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=scope,open_browser=False))
     return sp
 
+def is_active():
+    spc = connect()
+    devices = spc.devices()['devices']
+    for device in devices:
+        if (device['id'] == DEVICE_ID and device['is_active'] == True):
+            return True
+    return False
+
 def playcard(cardID):
     spc = connect()
 
