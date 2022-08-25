@@ -1,4 +1,5 @@
-.~
+.*
 !.gitignore
 config.py
 __pycache__
+cards.txt
