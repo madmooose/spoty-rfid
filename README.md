@@ -72,17 +72,6 @@ We will now run
 ```
 for the first time to create the `.cache` file where the access token is stored. You have to follow the URL and paste the URL of your browser back into your command line.
 
-Now theres another hack we have to do. In order to no loose connection to our spotify client, we have to check if its still avaible and restart it if not. Add the following to your crontab as root.
-```sh
-   sudo crontab -e
-```
-and add
-```txt
-0 3 * * * /home/pi/spoty-rfid/awake_librespot.py
-```
-
-
-
 ### Daemonize it
 
 Copy `spoty-rfid.service` to `/etc/system.d/system/` and activate it
