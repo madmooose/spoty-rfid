@@ -13,9 +13,13 @@ volumecurrent = 60
 # if you need auth for another user, there is a .cache in the .py folder -> just delete it 
 # -> copy over to your headless machine
 
+CLIENT_ID: str = config.CLIENT_ID
+CLIENT_SECRET: str = config.CLIENT_SECRET
+REDIRECT_URI: str = config.REDIRECT_URI
+
 # 3) Get device it from Developer Console and put it in config.py
 
-
+DEVICE_ID = config.DEVICE_ID
 
 def connect_firstauth():
     # connect to spotify app and auth with browser
@@ -94,27 +98,34 @@ def btn_volDown():
 
 def btn_tracknext():
     spc = connect()
-    spc.next_track(device_id=DEVICE_ID)
+    try:
+        spc.next_track(device_id=DEVICE_ID)
+    except Exception as e:
+        pass
 
 def btn_trackprev():
     spc = connect()
-    spc.previous_track(device_id=DEVICE_ID)
+    try:
+        spc.previous_track(device_id=DEVICE_ID)
+    except Exception as e:
+        pass
 
 def btn_play():
     spc = connect()
-    if not spc.current_playback()['is_playing']:
+    if spc.current_playback() and not spc.current_playback()['is_playing']:
         spc.start_playback(device_id=DEVICE_ID)
 
 def btn_pause():
     spc = connect()
-    if spc.current_playback()['is_playing']:
+    if spc.current_playback() and spc.current_playback()['is_playing']:
         spc.pause_playback(device_id=DEVICE_ID)
 
 def btn_toggleplay():
     spc = connect()
-    if spc.current_playback()['is_playing']:
-        btn_pause()
-    else:
-        btn_play()
+    if spc.current_playback():
+        if not spc.current_playback()['is_playing']:
+            btn_play()
+        else:
+            btn_pause()
 
 
