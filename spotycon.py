@@ -1,29 +1,21 @@
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+import config
 
 #match this with libresport default volume inside CONF
 volumecurrent = 60
 
-# 1) a app must be created, write down keys to below
+# 1) a app must be created, write down keys to config.py
 # https://developer.spotify.com/dashboard/applications
-# alternate set env vars
-# export SPOTIPY_CLIENT_ID='xxx'
-# export SPOTIPY_CLIENT_SECRET='xxx'
-# export SPOTIPY_REDIRECT_URI='http://localhost:8080'
-# ^be shure to use url with a port like this!
-
-CLIENT_ID: str = 'xxx'
-CLIENT_SECRET: str = 'xxx'
-REDIRECT_URI: str = 'http://localhost:8080'
 
 # 2) !give your app access once using a -non headless- machine, it will open a webbrowser!
 # ->run connect_firstauth() from RfSpoty
 # if you need auth for another user, there is a .cache in the .py folder -> just delete it 
 # -> copy over to your headless machine
 
-# 3) I think you need to get device ID for the raspoty-box, once with debug, and use it...
+# 3) Get device it from Developer Console and put it in config.py
 
-DEVICE_ID = 'xxx'
+
 
 def connect_firstauth():
     # connect to spotify app and auth with browser

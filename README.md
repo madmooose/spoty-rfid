@@ -57,7 +57,7 @@ Check if you have read-and-write-access.
 Visit [Spotify Devoloper Dashboard](https://developer.spotify.com/dashboard/applications) and create an app. Remember `Client ID` and `Client Secret`. Also edit settings and add `http://localhost:8080` to `Redirect URIs`.
 Now switch to the cosole-tab on the Developer Dashboard and choose `Player`. Click on `/v1/me/player/devices`, `get token` (user-read-playback-state is enough) and `try it`. Grab the ID of the client you what to control.
 
-Now you have to add the collected values to `spotycon.py`.
+Now you have to add the collected values to `config.py`.
 
 We will now run
 ```sh
