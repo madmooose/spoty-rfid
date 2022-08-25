@@ -42,7 +42,7 @@ def connect():
     if not is_active(sp):
         print("Restarting librespot")
         subprocess.run(["sudo", "systemctl", "restart", "raspotify"])
-        time.sleep(1) # wait till process is actually there
+        time.sleep(3) # wait till process is actually there
         print("done")
     return sp
 
