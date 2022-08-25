@@ -3,7 +3,6 @@ from spotipy.oauth2 import SpotifyOAuth
 
 #match this with libresport default volume inside CONF
 volumecurrent = 60
-playing = False
 
 # 1) a app must be created, write down keys to below
 # https://developer.spotify.com/dashboard/applications
@@ -52,8 +51,7 @@ def is_active():
             return True
     return False
 
-def playcard(cardID):
-    spc = connect()
+def card_react(cardID):
 
     # get dict (getting it late -> you can make changes anytime)
     d = {}
@@ -63,13 +61,30 @@ def playcard(cardID):
             (key, val) = ll.split()
             d[key] = val
 
-    print(d[cardID])
+if cardID in d.keys():
+        print(d[cardID])
+        if d[cardID] == "play":
+            btn_toggleplay()
+        elif d[cardID] == "pause":
+            btn_toggleplay()
+        elif d[cardID] == "playpause":
+            btn_toggleplay()
+        elif d[cardID] == "next":
+            btn_tracknext()
+        elif d[cardID] == "prev":
+            btn_trackprev()
+        elif d[cardID] == "volUp":
+            btn_volUp()
+        elif d[cardID] == "volDown":
+            btn_volDown()
+        else:
+            do_play(d[cardID])
+    else:
+        print("Add {!r} to your cards.txt".format(cardID))
 
-    #playback
-    #spc.transfer_playback(device_id=DEVICE_ID, force_play=True)
-    spc.start_playback(device_id=DEVICE_ID, context_uri=d[cardID])
-    #spc.volume(volumestart,device_id=DEVICE_ID)
-    playing = True
+def do_play(spotify_uri):
+    spc = connect()
+    spc.start_playback(device_id=DEVICE_ID, context_uri=spotify_uri)
 
 def btn_volUp():
     global volumecurrent
@@ -93,12 +108,21 @@ def btn_trackprev():
     spc = connect()
     spc.previous_track(device_id=DEVICE_ID)
 
+def btn_play():
+    spc = connect()
+    if not spc.current_playback()['is_playing']:
+        spc.start_playback(device_id=DEVICE_ID)
+
+def btn_pause():
+    spc = connect()
+    if spc.current_playback()['is_playing']:
+        spc.pause_playback(device_id=DEVICE_ID)
+
 def btn_toggleplay():
     spc = connect()
-    global playing
-    if playing:
-        spc.pause_playback(device_id=DEVICE_ID)
-        playing = False
+    if spc.current_playback()['is_playing']:
+        btn_pause()
     else:
-        spc.start_playback(device_id=DEVICE_ID)
-        playing = True
+        btn_play()
+
+

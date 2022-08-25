@@ -23,6 +23,13 @@ and install all requirements.
 ### Create a cards.txt
 Format is like that
 ```txt
+[number of rfid-tag] play # play-tag
+[number of rfid-tag] pause # pause-tag
+[number of rfid-tag] playpause # toggle-tag
+[number of rfid-tag] next # play next track in playlist
+[number of rfid-tag] prev # play previous track in playlist
+[number of rfid-tag] volUp # volume up tag
+[number of rfid-tag] volDown # volume down tag
 [number of rfid-tag] [spotify-uri] # here's some space for comments
 ```
 

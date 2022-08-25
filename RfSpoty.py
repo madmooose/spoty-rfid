@@ -51,7 +51,7 @@ def rfidusb():
                     rfID = str(newCode[::2]) # [::2] -> remove every second char
                     if(len(rfID) > 0):
                         print(rfID)
-                        spotycon.playcard(rfID)
+                        spotycon.card_react(rfID)
                     # reset code
                     newCode = ''
 
