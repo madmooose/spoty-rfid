@@ -53,7 +53,7 @@ def card_react(cardID):
             (key, val) = ll.split()
             d[key] = val
 
-if cardID in d.keys():
+    if cardID in d.keys():
         print(d[cardID])
         if d[cardID] == "play":
             btn_toggleplay()
