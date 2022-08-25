@@ -78,7 +78,7 @@ Now theres another hack we have to do. In order to no loose connection to our sp
 ```
 and add
 ```txt
-0 3 * * * /home/pi/spotify-rfid/awake_librespot.py
+0 3 * * * /home/pi/spoty-rfid/awake_librespot.py
 ```
 
 
