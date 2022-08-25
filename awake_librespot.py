@@ -3,5 +3,6 @@
 import os
 import spotycon
 
-if not spotycon.is_active():
+spc=spoticon.connect()
+if not spotycon.is_active(spc):
     os.system("systemctl restart raspotify")

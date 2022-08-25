@@ -38,13 +38,12 @@ def connect_firstauth():
 def connect():
     scope = "user-read-playback-state,user-modify-playback-state"
     sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=scope,open_browser=False))
-    if not is_active():
+    if not is_active(sp):
         print("Restarting librespot")
         os.system("sudo /home/pi/spoty-rfid/awake_librespot.py")
     return sp
 
-def is_active():
-    spc = connect()
+def is_active(spc):
     devices = spc.devices()['devices']
     for device in devices:
         if (device['id'] == DEVICE_ID and device['is_active'] == True):
