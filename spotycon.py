@@ -1,5 +1,5 @@
 import spotipy
-import os
+import subprocess
 from spotipy.oauth2 import SpotifyOAuth
 import config
 
@@ -40,7 +40,7 @@ def connect():
     sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=scope,open_browser=False))
     if not is_active(sp):
         print("Restarting librespot")
-        os.system("sudo systemctl restart raspotify")
+        subprocess.call("sudo systemctl restart raspotify")
     return sp
 
 def is_active(spc):
