@@ -58,6 +58,13 @@ Visit [Spotify Devoloper Dashboard](https://developer.spotify.com/dashboard/appl
 Now switch to the cosole-tab on the Developer Dashboard and choose `Player`. Click on `/v1/me/player/devices`, `get token` (user-read-playback-state is enough) and `try it`. Grab the ID of the client you what to control.
 
 Now you have to add the collected values to `config.py`.
+```txt
+CLIENT_ID: str = 'xxx'
+CLIENT_SECRET: str = 'xxx'
+REDIRECT_URI: str = 'http://localhost:8080'
+
+DEVICE_ID = 'xxx'
+```
 
 We will now run
 ```sh
