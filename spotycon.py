@@ -40,7 +40,8 @@ def connect():
     sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=scope,open_browser=False))
     if not is_active(sp):
         print("Restarting librespot")
-        subprocess.call("sudo systemctl restart raspotify")
+        subprocess.run(["sudo", "systemctl", "restart", "raspotify"])
+        print("done")
     return sp
 
 def is_active(spc):
