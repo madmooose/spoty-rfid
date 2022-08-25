@@ -46,7 +46,7 @@ def connect():
 def is_active(spc):
     devices = spc.devices()['devices']
     for device in devices:
-        if (device['id'] == DEVICE_ID and device['is_active'] == True):
+        if (device['id'] == DEVICE_ID):
             return True
     return False
 
