@@ -1,4 +1,5 @@
 import spotipy
+import os
 from spotipy.oauth2 import SpotifyOAuth
 import config
 
@@ -37,6 +38,8 @@ def connect_firstauth():
 def connect():
     scope = "user-read-playback-state,user-modify-playback-state"
     sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=scope,open_browser=False))
+    if not is_active():
+        os.system("sudo /home/pi/spoty-rfid/awake_librespot.py")
     return sp
 
 def is_active():
