@@ -40,7 +40,7 @@ def connect():
     sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=scope,open_browser=False))
     if not is_active(sp):
         print("Restarting librespot")
-        os.system("sudo /home/pi/spoty-rfid/awake_librespot.py")
+        os.system("sudo systemctl restart raspotify")
     return sp
 
 def is_active(spc):
