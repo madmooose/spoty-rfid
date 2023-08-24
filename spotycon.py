@@ -37,8 +37,9 @@ def connect():
     sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=SCOPE,open_browser=False))
     return sp
 
-def transfer_to_box():
+def transfer_to_box(spc):
     spc = connect()
+    box_is_active(spc)
     spc.transfer_playback(device_id=DEVICE_ID, force_play=true)
 
 def restart_box():
@@ -63,7 +64,7 @@ def box_is_active(spc):
             logging.info('Device is active')
             return True
     restart_box()
-    return False
+    return True
 
 def card_react(cardID):
 
