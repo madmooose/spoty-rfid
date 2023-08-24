@@ -3,6 +3,9 @@ import subprocess
 import time
 from spotipy.oauth2 import SpotifyOAuth
 import config
+import logging
+
+logging.basicConfig(filename='spotyCon.log', format='%(asctime)s %(message)s', level=logging.DEBUG)
 
 #match this with libresport default volume inside CONF
 volumecurrent = 60
@@ -22,35 +25,44 @@ REDIRECT_URI: str = config.REDIRECT_URI
 # 3) Get device it from Developer Console and put it in config.py
 
 DEVICE_ID = config.DEVICE_ID
+SCOPE = "user-read-playback-state,user-modify-playback-state"
 
 def connect_firstauth():
     # connect to spotify app and auth with browser
-    scope = "user-read-playback-state,user-modify-playback-state"
-    sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=scope,open_browser=True))
+    sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=SCOPE,open_browser=True))
 
-    #3) aiming device ^^ DEVICE_ID
-    res = sp.devices()
-
-    sp.start_playback(device_id=DEVICE_ID, context_uri='spotify:playlist:INSERTANYPLAYLISTHERE')
-    print("")
-    sp.pause_playback()
     return sp
 
 def connect():
-    scope = "user-read-playback-state,user-modify-playback-state"
-    sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=scope,open_browser=False))
-    if not is_active(sp):
-        print("Restarting librespot")
-        subprocess.run(["sudo", "systemctl", "restart", "raspotify"])
-        time.sleep(3) # wait till process is actually there
-        print("done")
+    sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI, scope=SCOPE,open_browser=False))
     return sp
+
+def transfer_to_box():
+    spc = connect()
+    spc.transfer_playback(device_id=DEVICE_ID, force_play=true)
+
+def restart_box():
+    logging.info("Device inactive or hijacked: Restarting librespot")
+    subprocess.run(["sudo", "systemctl", "restart", "raspotify"])
+    time.sleep(3) # wait till process is actually there
+    logging.info("done")
+   
 
 def is_active(spc):
     devices = spc.devices()['devices']
     for device in devices:
-        if (device['id'] == DEVICE_ID):
+        if device['is_active'] == True:
             return True
+    return False
+
+def box_is_active(spc):
+    devices = spc.devices()['devices']
+    for device in devices:
+        #logging.debug('Device ID: ' + device['id'])
+        if (device['id'] == DEVICE_ID):
+            logging.info('Device is active')
+            return True
+    restart_box()
     return False
 
 def card_react(cardID):
@@ -66,9 +78,9 @@ def card_react(cardID):
     if cardID in d.keys():
         print(d[cardID])
         if d[cardID] == "play":
-            btn_toggleplay()
+            btn_play()
         elif d[cardID] == "pause":
-            btn_toggleplay()
+            btn_pause()
         elif d[cardID] == "playpause":
             btn_toggleplay()
         elif d[cardID] == "next":
@@ -79,14 +91,21 @@ def card_react(cardID):
             btn_volUp()
         elif d[cardID] == "volDown":
             btn_volDown()
+        elif d[cardID] == "transfer":
+            transfer_to_box()
         else:
             do_play(d[cardID])
     else:
-        print("Add {!r} to your cards.txt".format(cardID))
+        logging.warning("Add {!r} to your cards.txt".format(cardID))
 
 def do_play(spotify_uri):
     spc = connect()
-    spc.start_playback(device_id=DEVICE_ID, context_uri=spotify_uri)
+    if is_active(spc):
+        spc.start_playback(context_uri=spotify_uri)
+    else:
+        box_is_active(spc)
+        spc.start_playback(device_id=DEVICE_ID, context_uri=spotify_uri)
+    logging.info('Playing ' + spotify_uri)
 
 def btn_volUp():
     global volumecurrent
@@ -94,6 +113,7 @@ def btn_volUp():
         volumecurrent += 10
         spc = connect()
         spc.volume(volumecurrent,device_id=DEVICE_ID)
+        logging.info('Volume now at '+ volumecurrent)
 
 def btn_volDown():
     global volumecurrent
@@ -101,37 +121,46 @@ def btn_volDown():
         volumecurrent -= 10
         spc = connect()
         spc.volume(volumecurrent,device_id=DEVICE_ID)
+        logging.info('Volume now at ' + volumecurrent)
 
 def btn_tracknext():
     spc = connect()
     try:
-        spc.next_track(device_id=DEVICE_ID)
+        spc.next_track()
+        logging.info('Play next track')
     except Exception as e:
+        logging.info('Playlist end')
         pass
 
 def btn_trackprev():
     spc = connect()
     try:
-        spc.previous_track(device_id=DEVICE_ID)
+        spc.previous_track()
+        logging.info('Playing previous track')
     except Exception as e:
+        logging.info('Beginning of playlist')
         pass
 
 def btn_play():
     spc = connect()
     if spc.current_playback() and not spc.current_playback()['is_playing']:
-        spc.start_playback(device_id=DEVICE_ID)
+        spc.start_playback()
+        logging.info('Start playing')
 
 def btn_pause():
     spc = connect()
     if spc.current_playback() and spc.current_playback()['is_playing']:
-        spc.pause_playback(device_id=DEVICE_ID)
+        spc.pause_playback()
+        logging.info('Pause playing')
 
 def btn_toggleplay():
     spc = connect()
     if spc.current_playback():
         if not spc.current_playback()['is_playing']:
-            btn_play()
+            spc.start_playback()
+            logging.info('Toggle -> Start playing')
         else:
-            btn_pause()
+            spc.pause_playback()
+            logging.info('Toggle -> Pause playing')
 
 

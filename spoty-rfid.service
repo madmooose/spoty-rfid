@@ -8,7 +8,6 @@ Group=pi
 Restart=always
 WorkingDirectory=/home/pi/spoty-rfid
 ExecStart=/home/pi/spoty-rfid/RfSpoty.py
-Nice=15
 
 [Install]
 WantedBy=multi-user.target

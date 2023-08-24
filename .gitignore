@@ -1,5 +1,7 @@
 .*
 !.gitignore
-config.py
+config.py*
 __pycache__
 cards.txt
+*.log
+
