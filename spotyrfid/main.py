@@ -167,13 +167,22 @@ class App:
         await self.bot.app.updater.start_polling()
 
     async def _stop_bot(self) -> None:
+        # Each stage is guarded independently: a failed _start_bot (e.g. bad
+        # token aborts initialize()) leaves the updater/app never started, so
+        # stopping them would raise "not running" — that's expected, not an error.
         if self.bot:
-            try:
-                await self.bot.app.updater.stop()
-                await self.bot.app.stop()
-                await self.bot.app.shutdown()
-            except Exception:  # noqa: BLE001
-                log.exception("error stopping bot")
+            app = self.bot.app
+            for stage in (
+                lambda: app.updater.stop() if app.updater.running else None,
+                lambda: app.stop() if app.running else None,
+                app.shutdown,
+            ):
+                try:
+                    coro = stage()
+                    if coro is not None:
+                        await coro
+                except Exception:  # noqa: BLE001
+                    log.debug("bot teardown stage failed", exc_info=True)
             self.bot = None
 
     # ---- RFID lifecycle -------------------------------------------------
