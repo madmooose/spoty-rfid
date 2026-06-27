@@ -1,0 +1,72 @@
+"""Configuration: environment variables first, SQLite config table as fallback.
+
+Rationale: a declaratively-provisioned box sets everything via the systemd
+EnvironmentFile (.env), which always wins — that stays the GitOps source of
+truth. A box shipped blank has no env secrets; the setup portal writes them into
+the SQLite `config` table instead. Either path yields a usable Config.
+
+Unlike before, missing secrets do NOT abort the process. We need to boot far
+enough to bring up the setup portal so the user can supply them. `is_complete()`
+tells the orchestrator whether the bot can start at all.
+"""
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from typing import Optional
+
+from .store import Store
+
+# keys used in the SQLite config table for portal-written secrets
+K_TG_TOKEN = "telegram_token"
+K_SP_ID = "spotify_client_id"
+K_SP_SECRET = "spotify_client_secret"
+
+
+@dataclass
+class Config:
+    telegram_token: Optional[str]
+    spotify_client_id: Optional[str]
+    spotify_client_secret: Optional[str]
+    spotify_redirect_uri: str = "http://127.0.0.1:8080/callback"
+    spotify_device_id: Optional[str] = None
+    rfid_device: str = "/dev/hidraw0"
+    web_port: int = 8080
+    ap_ssid: str = "SpotyBox"
+    ap_password: str = "changeme123"
+    wifi_iface: str = "wlan0"
+    ack_timeout: int = 60  # seconds to wait for the startup "I'm here" tap
+
+    @classmethod
+    def load(cls, store: Store) -> "Config":
+        def val(env_key: str, store_key: Optional[str] = None) -> Optional[str]:
+            v = os.environ.get(env_key)
+            if v:
+                return v
+            return store.get_config(store_key) if store_key else None
+
+        return cls(
+            telegram_token=val("TELEGRAM_TOKEN", K_TG_TOKEN),
+            spotify_client_id=val("SPOTIFY_CLIENT_ID", K_SP_ID),
+            spotify_client_secret=val("SPOTIFY_CLIENT_SECRET", K_SP_SECRET),
+            spotify_redirect_uri=os.environ.get(
+                "SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8080/callback"
+            ),
+            spotify_device_id=os.environ.get("SPOTIFY_DEVICE_ID") or None,
+            rfid_device=os.environ.get("RFID_DEVICE", "/dev/hidraw0"),
+            web_port=int(os.environ.get("WEB_PORT", "8080")),
+            ap_ssid=os.environ.get("AP_SSID", "SpotyBox"),
+            ap_password=os.environ.get("AP_PASSWORD", "changeme123"),
+            wifi_iface=os.environ.get("WIFI_IFACE", "wlan0"),
+            ack_timeout=int(os.environ.get("ACK_TIMEOUT", "60")),
+        )
+
+    def has_bot_token(self) -> bool:
+        return bool(self.telegram_token)
+
+    def has_spotify_creds(self) -> bool:
+        return bool(self.spotify_client_id and self.spotify_client_secret)
+
+    def is_complete(self) -> bool:
+        """Enough to start the bot. (Owner-chat check is separate, in Store.)"""
+        return self.has_bot_token() and self.has_spotify_creds()

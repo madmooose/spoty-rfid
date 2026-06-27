@@ -1,7 +1,33 @@
-.*
-!.gitignore
-config.py*
-__pycache__
-cards.txt
-*.log
+# Secrets & runtime state — NEVER commit
+*.env
+spoty-rfid.env
+store.db
+store.db-journal
+store.db-wal
+store.db-shm
+/var/lib/spotybox/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

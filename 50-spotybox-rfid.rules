@@ -1,0 +1,5 @@
+# Place at /etc/udev/rules.d/50-spotybox-rfid.rules
+# Replace VENDOR and PRODUCT with the values from `lsusb` for your reader
+# (the two hex numbers after "ID", e.g. ID 16c0:27db -> idVendor 16c0).
+# Then: sudo udevadm control --reload-rules && sudo udevadm trigger
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="VENDOR", ATTRS{idProduct}=="PRODUCT", MODE="0660", GROUP="plugdev"
