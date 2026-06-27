@@ -51,7 +51,10 @@ class App:
         self.bot: Bot | None = None
         self.reader: RfidReader | None = None
         self.web: WebServer | None = None
-        self._restart = asyncio.Event()  # set when portal saves a secret
+        # Created inside run() so it binds to the loop asyncio.run() starts,
+        # not whatever loop happens to exist at construction time (py3.9 binds
+        # the Event's futures to the current loop eagerly).
+        self._restart: asyncio.Event | None = None
 
     # ---- tag handling ---------------------------------------------------
     async def handle_tag(self, uid: str) -> None:
@@ -184,6 +187,8 @@ class App:
     # ---- main supervision loop -----------------------------------------
     async def run(self) -> None:
         loop = asyncio.get_running_loop()
+        if self._restart is None:
+            self._restart = asyncio.Event()
         while True:
             self._restart.clear()
             self.cfg = Config.load(self.store)  # re-read after any portal save
