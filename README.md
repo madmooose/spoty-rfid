@@ -53,6 +53,7 @@ spotyrfid/
   web.py       aiohttp: captive Wi-Fi page + OAuth callback catcher
   store.py     SQLite: tag bindings, token, config
   config.py    env-var configuration
+  i18n.py      translation catalog (English + German) + Translator
 ```
 
 The four requested capabilities:
@@ -150,6 +151,14 @@ The box supervises itself. On every boot it walks this decision tree:
 This matches the intended failure mode: **losing the bot connection** drops the
 box into recovery without needing a screen or SSH. A healthy box always gets
 your tap, so it never lingers in the portal.
+
+### Language
+
+The setup portal has a language selector (English and German) at the top. The
+choice is saved to SQLite and applies to **both** the portal and every Telegram
+bot message immediately — no restart needed. Adding a language is a single block
+in `spotyrfid/i18n.py`; missing keys fall back to English, so partial
+translations are safe.
 
 > The 60s no-tap trigger is deliberately literal per the design. If you're
 > often away from your phone at boot, raise `ACK_TIMEOUT`, or remember that the

@@ -104,6 +104,8 @@ Do not reintroduce env-priority.)
   - Owner chat IDs — set by trust-on-first-use `/start`
   - Preferred device ID — set by `/setdevice`
   - Telegram token, Spotify client ID/secret — written by the portal
+  - UI language (`language`, default English) — chosen in the portal; drives
+    both the portal and the Telegram bot via `i18n.Translator`
   - Tunables (ack timeout, etc.)
 - **Env vars (optional seed):** same keys, read only if SQLite lacks them.
 
@@ -169,9 +171,11 @@ spotyrfid/
   spotify.py   Web API playback control + SQLiteCacheHandler (the reauth fix).
   rfid.py      USB-HID keyboard-wedge reader in a thread -> asyncio queue.
   wifi.py      NetworkManager (nmcli) helpers + AP fallback.
-  web.py       Portal: Wi-Fi + token + Spotify-creds forms; OAuth callback.
+  web.py       Portal: Wi-Fi + token + Spotify-creds forms; OAuth callback;
+               language selector.
   store.py     SQLite: tags, token, config, owners. Source of truth.
   config.py    Config dataclass; SQLite-primary, env-seed loader.
+  i18n.py      Translation catalog + Translator (reads `language` from SQLite).
 ```
 
 ### Control tags

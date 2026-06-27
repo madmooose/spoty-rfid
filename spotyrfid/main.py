@@ -24,6 +24,7 @@ import logging
 from . import wifi
 from .bot import Bot
 from .config import Config, K_SP_ID, K_SP_SECRET, K_TG_TOKEN
+from .i18n import K_LANG, Translator, normalize_lang
 from .rfid import RfidReader
 from .spotify import SpotifyController
 from .store import Store
@@ -43,6 +44,7 @@ class App:
     def __init__(self) -> None:
         self.store = Store()
         self.cfg = Config.load(self.store)
+        self.t = Translator(self.store)
         self.spotify: SpotifyController | None = None
         self.bot: Bot | None = None
         self.reader: RfidReader | None = None
@@ -59,7 +61,7 @@ class App:
         if not self.spotify.is_authenticated():
             for chat_id in self.bot._allowed():
                 await self.bot.app.bot.send_message(
-                    chat_id, "Tag scanned but Spotify isn't linked. Use /auth."
+                    chat_id, self.t("tag_not_linked")
                 )
             return
         try:
@@ -67,7 +69,9 @@ class App:
         except Exception as e:  # noqa: BLE001
             log.exception("playback failed")
             for chat_id in self.bot._allowed():
-                await self.bot.app.bot.send_message(chat_id, f"Playback failed: {e}")
+                await self.bot.app.bot.send_message(
+                    chat_id, self.t("playback_failed", e=e)
+                )
 
     def _apply_tag(self, value: str) -> None:
         assert self.spotify
@@ -103,6 +107,12 @@ class App:
         log.info("spotify creds saved via portal")
         self._restart.set()
 
+    async def _save_language(self, lang: str) -> None:
+        # No restart needed: the portal re-renders in the new language right away
+        # and the bot's Translator reads this value fresh on every message.
+        self.store.set_config(K_LANG, normalize_lang(lang))
+        log.info("language set to %s via portal", lang)
+
     async def _on_wifi(self, ssid: str, pwd: str) -> bool:
         ok = await wifi.connect(ssid, pwd, self.cfg.wifi_iface)
         if ok:
@@ -111,11 +121,12 @@ class App:
         return ok
 
     # ---- portal lifecycle ----------------------------------------------
-    async def start_portal(self, *, wifi_block: bool, status: str) -> None:
+    async def start_portal(self, *, wifi_block: bool, status_key: str) -> None:
         if self.web and self.web.running:
             return
         self.web = WebServer(
             on_wifi=self._on_wifi,
+            t=self.t,
             on_oauth_code=(
                 (lambda url: asyncio.to_thread(self.spotify.complete_auth, url))
                 if self.spotify else None
@@ -123,11 +134,12 @@ class App:
             scan_ssids=lambda: wifi.scan(),
             on_telegram_token=self._save_telegram_token,
             on_spotify_creds=self._save_spotify_creds,
+            on_language=self._save_language,
             redirect_uri=self.cfg.spotify_redirect_uri,
             port=self.cfg.web_port,
             enable_wifi=wifi_block,
             enable_setup=True,
-            status_message=status,
+            status_key=status_key,
         )
         await self.web.start()
 
@@ -185,7 +197,7 @@ class App:
                 )
                 await self.start_portal(
                     wifi_block=True,
-                    status="No internet connection. Join Wi-Fi to continue.",
+                    status_key="status_no_internet",
                 )
                 await self._wait_for_restart()
                 continue
@@ -194,8 +206,7 @@ class App:
                 log.warning("not configured — setup portal on LAN")
                 await self.start_portal(
                     wifi_block=False,
-                    status="Finish setup: add your Telegram token and Spotify "
-                           "credentials.",
+                    status_key="status_finish_setup",
                 )
                 await self._wait_for_restart()
                 continue
@@ -209,7 +220,7 @@ class App:
                 log.info("no owner yet — portal up, waiting for /start claim")
                 await self.start_portal(
                     wifi_block=False,
-                    status="Message your bot and send /start to claim ownership.",
+                    status_key="status_claim_ownership",
                 )
                 # owner claim happens via Telegram; poll until present
                 ok = await self._wait_for_owner_or_restart()
@@ -229,8 +240,7 @@ class App:
                 log.warning("bot connection unconfirmed — portal on LAN")
                 await self.start_portal(
                     wifi_block=False,
-                    status="Lost contact via Telegram. Re-check the bot token "
-                           "below, or fix connectivity.",
+                    status_key="status_lost_contact",
                 )
                 await self._wait_for_restart()
                 await self._teardown_runtime()
