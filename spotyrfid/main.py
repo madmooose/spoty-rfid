@@ -21,6 +21,8 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from telegram.error import InvalidToken
+
 from . import wifi
 from .bot import Bot
 from .config import Config, K_SP_ID, K_SP_SECRET, K_TG_TOKEN
@@ -212,7 +214,17 @@ class App:
                 continue
 
             # Configured + online: start bot, run health probe.
-            await self._start_bot()
+            try:
+                await self._start_bot()
+            except InvalidToken:
+                log.warning("telegram token rejected — setup portal on LAN")
+                await self._teardown_runtime()
+                await self.start_portal(
+                    wifi_block=False,
+                    status_key="status_finish_setup",
+                )
+                await self._wait_for_restart()
+                continue
             assert self.bot
             self._start_rfid(loop)
 
