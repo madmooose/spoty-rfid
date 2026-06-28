@@ -82,6 +82,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "auth_done": "Spotify linked ✅",
         "auth_failed": "Auth failed: {e}\nTry /auth again.",
+        "auth_no_code": (
+            "That link has no authorization code in it — it looks like you "
+            "pasted the link I sent you. Open it, click Agree, then paste the "
+            "URL you get redirected to (it contains `?code=`)."
+        ),
         # ---- bot: list ----
         "list_empty": "No tags bound yet.",
         # ---- bot: rebind / unbind ----
@@ -212,6 +217,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "auth_done": "Spotify verknüpft ✅",
         "auth_failed": (
             "Authentifizierung fehlgeschlagen: {e}\nVersuche /auth erneut."
+        ),
+        "auth_no_code": (
+            "Dieser Link enthält keinen Autorisierungs-Code — es sieht aus, "
+            "als hättest du die URL eingefügt, die ich dir geschickt habe. "
+            "Öffne sie, klicke auf „Zustimmen“, und füge dann die URL ein, "
+            "auf der du landest (sie enthält `?code=`)."
         ),
         # ---- bot: list ----
         "list_empty": "Noch keine Tags verknüpft.",

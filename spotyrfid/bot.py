@@ -37,7 +37,7 @@ from telegram.ext import (
 )
 
 from .i18n import Translator
-from .spotify import SpotifyController
+from .spotify import AuthCodeError, SpotifyController
 from .store import Store
 
 ACK_CALLBACK = "spotybox_ack"
@@ -288,7 +288,12 @@ class Bot:
                 self.spotify.complete_auth(text)
                 ctx.chat_data.pop(PENDING_AUTH, None)
                 await update.message.reply_text(self.t("auth_done"))
+            except AuthCodeError:
+                # Wrong paste (likely the authorize URL): stay in auth mode so
+                # they can just paste the correct redirect URL next.
+                await update.message.reply_text(self.t("auth_no_code"))
             except Exception as e:  # noqa: BLE001
+                ctx.chat_data.pop(PENDING_AUTH, None)
                 await update.message.reply_text(self.t("auth_failed", e=e))
             return
 
