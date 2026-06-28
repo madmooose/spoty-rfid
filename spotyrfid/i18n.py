@@ -48,6 +48,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
             "🎵 SpotyBox ready.\n\n"
             "/status – show state\n"
             "/auth – link Spotify (control plane)\n"
+            "/play [uri|link] – play now (test playback; no arg = resume)\n"
             "/devices – list Spotify Connect devices\n"
             "/setdevice <id> – pin playback to a device\n"
             "/list – list tags\n"
@@ -105,6 +106,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # ---- main: playback ----
         "tag_not_linked": "Tag scanned but Spotify isn't linked. Use /auth.",
         "playback_failed": "Playback failed: {e}",
+        "play_usage": (
+            "Usage: /play <spotify URI or open.spotify.com link>\n"
+            "Or just /play with no argument to resume the current track."
+        ),
+        "play_started": "▶️ Playing `{uri}`",
+        "play_resumed": "▶️ Resumed.",
         # ---- portal: status banners ----
         "status_no_internet": "No internet connection. Join Wi-Fi to continue.",
         "status_finish_setup": (
@@ -182,6 +189,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
             "🎵 SpotyBox bereit.\n\n"
             "/status – Status anzeigen\n"
             "/auth – Spotify verknüpfen (Steuerung)\n"
+            "/play [uri|link] – jetzt abspielen (Test; ohne Argument: fortsetzen)\n"
             "/devices – Spotify-Connect-Geräte auflisten\n"
             "/setdevice <id> – Wiedergabe auf ein Gerät festlegen\n"
             "/list – Tags auflisten\n"
@@ -255,6 +263,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
             "Tag gescannt, aber Spotify ist nicht verknüpft. Nutze /auth."
         ),
         "playback_failed": "Wiedergabe fehlgeschlagen: {e}",
+        "play_usage": (
+            "Verwendung: /play <Spotify-URI oder open.spotify.com-Link>\n"
+            "Oder einfach /play ohne Argument, um die Wiedergabe fortzusetzen."
+        ),
+        "play_started": "▶️ Spiele `{uri}`",
+        "play_resumed": "▶️ Fortgesetzt.",
         # ---- portal: status banners ----
         "status_no_internet": (
             "Keine Internetverbindung. Mit WLAN verbinden, um fortzufahren."

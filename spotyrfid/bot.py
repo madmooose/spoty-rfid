@@ -258,6 +258,35 @@ class Bot:
         ctx.chat_data[PENDING_AUTH] = True
         await update.message.reply_text(self.t("auth_prompt", url=url))
 
+    async def cmd_play(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+        """Play a URI/link now — a direct test of the Spotify playback path.
+
+        Surfaces the raw Spotify error (e.g. "No active device"), which is the
+        usual reason a bound tag scans fine but nothing plays.
+        """
+        if not await self._guard(update):
+            return
+        if not self.spotify.is_authenticated():
+            await update.message.reply_text(self.t("spotify_not_linked_short"))
+            return
+        arg = " ".join(ctx.args).strip() if ctx.args else ""
+        try:
+            if not arg:
+                # No argument: resume current playback — also a connectivity test.
+                await asyncio.to_thread(self.spotify.playpause)
+                await update.message.reply_text(self.t("play_resumed"))
+                return
+            uri = normalize_uri(arg)
+            if not uri:
+                await update.message.reply_text(self.t("play_usage"))
+                return
+            await asyncio.to_thread(self.spotify.play_uri, uri)
+            await update.message.reply_text(
+                self.t("play_started", uri=uri), parse_mode=ParseMode.MARKDOWN
+            )
+        except Exception as e:  # noqa: BLE001
+            await update.message.reply_text(self.t("playback_failed", e=e))
+
     async def cmd_list(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if not await self._guard(update):
             return
@@ -346,6 +375,7 @@ class Bot:
         a.add_handler(CommandHandler("devices", self.cmd_devices))
         a.add_handler(CommandHandler("setdevice", self.cmd_setdevice))
         a.add_handler(CommandHandler("auth", self.cmd_auth))
+        a.add_handler(CommandHandler("play", self.cmd_play))
         a.add_handler(CommandHandler("list", self.cmd_list))
         a.add_handler(CommandHandler("rebind", self.cmd_rebind))
         a.add_handler(CommandHandler("unbind", self.cmd_unbind))
