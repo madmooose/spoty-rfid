@@ -25,6 +25,7 @@ from typing import Optional
 
 import asyncio
 
+import aiohttp
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -46,6 +47,30 @@ log = logging.getLogger(__name__)
 
 _URI_RE = re.compile(r"(spotify:[a-zA-Z]+:[a-zA-Z0-9]+)")
 _URL_RE = re.compile(r"open\.spotify\.com/(?:intl-[a-z]+/)?([a-z]+)/([a-zA-Z0-9]+)")
+
+
+async def verify_telegram_token(token: str, *, timeout: float = 10.0) -> str:
+    """Check a bot token via the getMe API. Mirrors verify_spotify_credentials.
+
+    Returns "valid" (200 ok:true), "invalid" (401/404 — token rejected), or
+    "unreachable" (offline / timeout / 5xx). "unreachable" is distinct from
+    "invalid" so offline AP setup can save without being able to verify.
+    """
+    if not token:
+        return "invalid"
+    url = f"https://api.telegram.org/bot{token}/getMe"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=timeout)
+            ) as resp:
+                if resp.status == 200:
+                    return "valid"
+                if resp.status in (401, 404):
+                    return "invalid"
+                return "unreachable"
+    except (aiohttp.ClientError, asyncio.TimeoutError):
+        return "unreachable"
 
 # per-chat pending intent stored in chat_data
 PENDING_BIND = "pending_bind_uid"   # value: uid awaiting a URI

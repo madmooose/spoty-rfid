@@ -79,7 +79,9 @@ class WebServer:
         t: Translator,
         on_oauth_code: Optional[Callable[[str], Awaitable[None]]] = None,
         scan_ssids: Optional[Callable[[], Awaitable[list[str]]]] = None,
-        on_telegram_token: Optional[Callable[[str], Awaitable[None]]] = None,
+        on_telegram_token: Optional[
+            Callable[[str], Awaitable[Optional[str]]]
+        ] = None,
         on_spotify_creds: Optional[
             Callable[[str, str], Awaitable[Optional[str]]]
         ] = None,
@@ -195,8 +197,11 @@ class WebServer:
         data = await request.post()
         token = str(data.get("token", "")).strip()
         if token and self.on_telegram_token:
-            await self.on_telegram_token(token)
-            msg = f"<span class=ok>{self.t('portal_tg_saved')}</span>"
+            err = await self.on_telegram_token(token)
+            if err:
+                msg = f"<span class=err>{err}</span>"
+            else:
+                msg = f"<span class=ok>{self.t('portal_tg_saved')}</span>"
         else:
             msg = f"<span class=err>{self.t('portal_tg_none')}</span>"
         return web.Response(text=await self._render(msg), content_type="text/html")

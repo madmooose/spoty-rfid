@@ -138,6 +138,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "portal_tg_saved": "Token saved. The box will restart the bot.",
         "portal_tg_none": "No token provided.",
+        "portal_tg_invalid": (
+            "Telegram rejected this token. Double-check the token from "
+            "@BotFather (it looks like 123456789:ABC...)."
+        ),
         # ---- portal: spotify ----
         "portal_sp_legend": "Spotify app credentials",
         "portal_sp_id_ph": "Client ID",
@@ -289,6 +293,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "portal_tg_saved": "Token gespeichert. Die Box startet den Bot neu.",
         "portal_tg_none": "Kein Token angegeben.",
+        "portal_tg_invalid": (
+            "Telegram hat diesen Token abgelehnt. Prüfe den Token von "
+            "@BotFather (er sieht aus wie 123456789:ABC...)."
+        ),
         # ---- portal: spotify ----
         "portal_sp_legend": "Spotify-App-Zugangsdaten",
         "portal_sp_id_ph": "Client ID",

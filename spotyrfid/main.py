@@ -24,7 +24,7 @@ import logging
 from telegram.error import InvalidToken
 
 from . import wifi
-from .bot import Bot
+from .bot import Bot, verify_telegram_token
 from .config import Config, K_SP_ID, K_SP_SECRET, K_TG_TOKEN
 from .i18n import K_LANG, Translator, normalize_lang
 from .rfid import RfidReader
@@ -101,10 +101,21 @@ class App:
             await self.handle_tag(uid)
 
     # ---- portal callbacks ----------------------------------------------
-    async def _save_telegram_token(self, token: str) -> None:
+    async def _save_telegram_token(self, token: str) -> str | None:
+        """Validate then persist. Returns an error message, or None on success.
+
+        Rejects tokens Telegram refuses; when Telegram is unreachable (offline
+        AP setup) it can't be checked, so we save anyway rather than trap the
+        user.
+        """
+        status = await verify_telegram_token(token)
+        if status == "invalid":
+            log.warning("telegram token rejected by Telegram — not saved")
+            return self.t("portal_tg_invalid")
         self.store.set_config(K_TG_TOKEN, token)
-        log.info("telegram token saved via portal")
+        log.info("telegram token saved via portal (verify=%s)", status)
         self._restart.set()
+        return None
 
     async def _save_spotify_creds(self, cid: str, secret: str) -> str | None:
         """Validate then persist. Returns an error message, or None on success.
