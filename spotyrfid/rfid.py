@@ -25,6 +25,20 @@ _HID_DIGITS = {
 _HID_ENTER = 0x28
 
 
+def _first_keycode(report: bytes) -> int:
+    """First digit/Enter keycode in a HID report, or 0 if none.
+
+    Scans from byte 2 onward (skipping the modifier + reserved bytes, or a
+    report-id + modifier prefix) so it works whether or not the reader prefixes
+    a report ID. Key-release reports carry zeros in the key slots, so they
+    naturally yield 0 and are ignored.
+    """
+    for b in report[2:]:
+        if b == _HID_ENTER or b in _HID_DIGITS:
+            return b
+    return 0
+
+
 class RfidReader:
     def __init__(self, loop: asyncio.AbstractEventLoop, device: str = "/dev/hidraw0"):
         self.loop = loop
@@ -47,18 +61,21 @@ class RfidReader:
     def _run(self) -> None:
         buf: list[str] = []
         try:
-            with open(self.device, "rb") as fh:
+            # buffering=0 is essential: each read() then maps to one os.read,
+            # i.e. exactly one HID report aligned to its start. A buffered
+            # reader concatenates reports in an 8 KiB buffer and hands back
+            # arbitrary 8-byte slices, which straddles report boundaries and
+            # scrambles the keycode positions when reports aren't exactly the
+            # requested size.
+            with open(self.device, "rb", buffering=0) as fh:
                 log.info("RFID reader thread reading %s", self.device)
                 while not self._stop.is_set():
-                    report = fh.read(8)  # standard 8-byte keyboard report
-                    # Set LOG_LEVEL=DEBUG to see every raw report — tells you
-                    # whether the device sends data at all and in what layout.
+                    report = fh.read(64)  # one report; size varies by device
+                    if not report:
+                        continue
+                    # Set LOG_LEVEL=DEBUG to see every raw report.
                     log.debug("hid report: %s", report.hex())
-                    if not report or len(report) < 3:
-                        continue
-                    keycode = report[2]
-                    if keycode == 0:
-                        continue
+                    keycode = _first_keycode(report)
                     if keycode == _HID_ENTER:
                         uid = "".join(buf)
                         buf.clear()
@@ -66,8 +83,6 @@ class RfidReader:
                         self._emit(uid)
                     elif keycode in _HID_DIGITS:
                         buf.append(_HID_DIGITS[keycode])
-                    else:
-                        log.debug("ignored keycode 0x%02x", keycode)
         except FileNotFoundError:
             log.error("RFID device %s not found", self.device)
         except PermissionError:

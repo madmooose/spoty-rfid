@@ -16,7 +16,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .rfid import _HID_DIGITS, _HID_ENTER
+from .rfid import _HID_DIGITS, _HID_ENTER, _first_keycode
 
 
 def _list() -> None:
@@ -45,20 +45,19 @@ def _list() -> None:
 def _watch(device: str) -> None:
     print(f"Reading {device} — tap a chip now (Ctrl-C to stop)…\n")
     buf: list[str] = []
-    with open(device, "rb") as fh:
+    # buffering=0 so each read() is one HID report (see rfid.py for why).
+    with open(device, "rb", buffering=0) as fh:
         while True:
-            report = fh.read(8)
-            print("raw:", report.hex())
-            if len(report) < 3:
+            report = fh.read(64)
+            if not report:
                 continue
-            keycode = report[2]
+            print(f"raw[{len(report)}]:", report.hex())
+            keycode = _first_keycode(report)
             if keycode == _HID_ENTER:
                 print("  -> decoded UID:", "".join(buf) or "(empty)")
                 buf.clear()
             elif keycode in _HID_DIGITS:
                 buf.append(_HID_DIGITS[keycode])
-            elif keycode != 0:
-                print(f"  (non-digit keycode 0x{keycode:02x} — reader may not be decimal)")
 
 
 def main() -> None:
