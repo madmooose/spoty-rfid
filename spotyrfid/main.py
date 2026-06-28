@@ -28,7 +28,7 @@ from .bot import Bot
 from .config import Config, K_SP_ID, K_SP_SECRET, K_TG_TOKEN
 from .i18n import K_LANG, Translator, normalize_lang
 from .rfid import RfidReader
-from .spotify import SpotifyController
+from .spotify import SpotifyController, verify_spotify_credentials
 from .store import Store
 from .web import WebServer
 
@@ -106,11 +106,22 @@ class App:
         log.info("telegram token saved via portal")
         self._restart.set()
 
-    async def _save_spotify_creds(self, cid: str, secret: str) -> None:
+    async def _save_spotify_creds(self, cid: str, secret: str) -> str | None:
+        """Validate then persist. Returns an error message, or None on success.
+
+        Rejects credentials Spotify actively refuses; when Spotify is
+        unreachable (e.g. offline AP setup) it can't be checked, so we save
+        anyway rather than trap the user.
+        """
+        status = await verify_spotify_credentials(cid, secret)
+        if status == "invalid":
+            log.warning("spotify creds rejected by Spotify — not saved")
+            return self.t("portal_sp_invalid")
         self.store.set_config(K_SP_ID, cid)
         self.store.set_config(K_SP_SECRET, secret)
-        log.info("spotify creds saved via portal")
+        log.info("spotify creds saved via portal (verify=%s)", status)
         self._restart.set()
+        return None
 
     def _current_setup_values(self) -> dict:
         # Read fresh (env + SQLite, with placeholders filtered) so the portal

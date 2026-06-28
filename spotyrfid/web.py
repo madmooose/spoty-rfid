@@ -80,7 +80,9 @@ class WebServer:
         on_oauth_code: Optional[Callable[[str], Awaitable[None]]] = None,
         scan_ssids: Optional[Callable[[], Awaitable[list[str]]]] = None,
         on_telegram_token: Optional[Callable[[str], Awaitable[None]]] = None,
-        on_spotify_creds: Optional[Callable[[str, str], Awaitable[None]]] = None,
+        on_spotify_creds: Optional[
+            Callable[[str, str], Awaitable[Optional[str]]]
+        ] = None,
         on_language: Optional[Callable[[str], Awaitable[None]]] = None,
         current_values: Optional[Callable[[], dict]] = None,
         redirect_uri: str = "http://127.0.0.1:8080/callback",
@@ -204,8 +206,11 @@ class WebServer:
         cid = str(data.get("client_id", "")).strip()
         secret = str(data.get("client_secret", "")).strip()
         if cid and secret and self.on_spotify_creds:
-            await self.on_spotify_creds(cid, secret)
-            msg = f"<span class=ok>{self.t('portal_sp_saved')}</span>"
+            err = await self.on_spotify_creds(cid, secret)
+            if err:
+                msg = f"<span class=err>{err}</span>"
+            else:
+                msg = f"<span class=ok>{self.t('portal_sp_saved')}</span>"
         else:
             msg = f"<span class=err>{self.t('portal_sp_required')}</span>"
         return web.Response(text=await self._render(msg), content_type="text/html")

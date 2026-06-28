@@ -15,10 +15,13 @@ revoked.
 """
 from __future__ import annotations
 
+import asyncio
+import base64
 import logging
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
+import aiohttp
 import spotipy
 from spotipy.cache_handler import CacheHandler
 from spotipy.oauth2 import SpotifyOAuth
@@ -29,6 +32,44 @@ log = logging.getLogger(__name__)
 
 SCOPES = "user-read-playback-state user-modify-playback-state"
 TOKEN_KEY = "spotify_token_info"
+
+
+TOKEN_URL = "https://accounts.spotify.com/api/token"
+
+
+async def verify_spotify_credentials(
+    client_id: str, client_secret: str, *, timeout: float = 10.0
+) -> str:
+    """Check an id+secret pair via the Client Credentials grant.
+
+    Returns one of:
+      "valid"       - Spotify accepted the pair (200 + token).
+      "invalid"     - Spotify rejected it (400/401 invalid_client).
+      "unreachable" - couldn't reach Spotify (offline / timeout / 5xx).
+
+    Client Credentials needs no user authorization, so it's a cheap pre-check
+    before the full OAuth flow. "unreachable" is deliberately distinct from
+    "invalid": during AP/offline setup we can't verify, so callers should save
+    anyway rather than block configuration.
+    """
+    if not client_id or not client_secret:
+        return "invalid"
+    basic = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                TOKEN_URL,
+                data={"grant_type": "client_credentials"},
+                headers={"Authorization": f"Basic {basic}"},
+                timeout=aiohttp.ClientTimeout(total=timeout),
+            ) as resp:
+                if resp.status == 200:
+                    return "valid"
+                if resp.status in (400, 401):
+                    return "invalid"
+                return "unreachable"
+    except (aiohttp.ClientError, asyncio.TimeoutError):
+        return "unreachable"
 
 
 class AuthCodeError(ValueError):

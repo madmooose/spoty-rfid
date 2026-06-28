@@ -149,6 +149,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "portal_sp_saved": "Spotify credentials saved.",
         "portal_sp_required": "Both fields are required.",
+        "portal_sp_invalid": (
+            "Spotify rejected these credentials. Double-check the Client ID "
+            "and Client Secret from your app at developer.spotify.com."
+        ),
         # ---- portal: oauth callback ----
         "portal_oauth_ok": "Spotify linked. You can close this page.",
         "portal_oauth_missing": "Missing code.",
@@ -296,6 +300,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "portal_sp_saved": "Spotify-Zugangsdaten gespeichert.",
         "portal_sp_required": "Beide Felder sind erforderlich.",
+        "portal_sp_invalid": (
+            "Spotify hat diese Zugangsdaten abgelehnt. Prüfe die Client-ID "
+            "und das Client-Secret deiner App auf developer.spotify.com."
+        ),
         # ---- portal: oauth callback ----
         "portal_oauth_ok": "Spotify verknüpft. Du kannst diese Seite schließen.",
         "portal_oauth_missing": "Code fehlt.",
