@@ -18,6 +18,7 @@ to start/stop this server; web.py just serves whatever pages are enabled.
 """
 from __future__ import annotations
 
+import html
 import logging
 from typing import Awaitable, Callable, Optional
 
@@ -59,14 +60,14 @@ _WIFI_BLOCK = """<fieldset><legend>{legend}</legend>
 
 _TG_BLOCK = """<fieldset><legend>{legend}</legend>
 <form method=post action=/telegram>
-<input name=token placeholder="{token_ph}" required>
+<input name=token placeholder="{token_ph}" value="{token_val}" required>
 <button type=submit>{save}</button></form>
 <small>{help}</small></fieldset>"""
 
 _SP_BLOCK = """<fieldset><legend>{legend}</legend>
 <form method=post action=/spotify>
-<input name=client_id placeholder="{id_ph}" required>
-<input name=client_secret placeholder="{secret_ph}" required>
+<input name=client_id placeholder="{id_ph}" value="{id_val}" required>
+<input name=client_secret placeholder="{secret_ph}" value="{secret_val}" required>
 <button type=submit>{save}</button></form>
 <small>{help}</small></fieldset>"""
 
@@ -81,6 +82,7 @@ class WebServer:
         on_telegram_token: Optional[Callable[[str], Awaitable[None]]] = None,
         on_spotify_creds: Optional[Callable[[str, str], Awaitable[None]]] = None,
         on_language: Optional[Callable[[str], Awaitable[None]]] = None,
+        current_values: Optional[Callable[[], dict]] = None,
         redirect_uri: str = "http://127.0.0.1:8080/callback",
         host: str = "0.0.0.0",
         port: int = 8080,
@@ -95,6 +97,10 @@ class WebServer:
         self.on_telegram_token = on_telegram_token
         self.on_spotify_creds = on_spotify_creds
         self.on_language = on_language
+        # Returns the currently-saved {token, client_id, client_secret} so the
+        # form can prefill them — read fresh on each render (values change as
+        # the user submits). Missing/None entries render as empty fields.
+        self.current_values = current_values
         self.redirect_uri = redirect_uri
         self.host = host
         self.port = port
@@ -136,9 +142,15 @@ class WebServer:
         tg_html = ""
         sp_html = ""
         if self.enable_setup:
+            cur = self.current_values() if self.current_values else {}
+
+            def esc(key: str) -> str:
+                return html.escape(cur.get(key) or "", quote=True)
+
             tg_html = _TG_BLOCK.format(
                 legend=t("portal_tg_legend"),
                 token_ph=t("portal_tg_token_ph"),
+                token_val=esc("token"),
                 save=t("portal_tg_save"),
                 help=t("portal_tg_help"),
             )
@@ -146,6 +158,8 @@ class WebServer:
                 legend=t("portal_sp_legend"),
                 id_ph=t("portal_sp_id_ph"),
                 secret_ph=t("portal_sp_secret_ph"),
+                id_val=esc("client_id"),
+                secret_val=esc("client_secret"),
                 save=t("portal_sp_save"),
                 help=t("portal_sp_help", redirect=f"<code>{self.redirect_uri}</code>"),
             )

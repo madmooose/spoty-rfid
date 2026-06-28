@@ -22,6 +22,19 @@ K_TG_TOKEN = "telegram_token"
 K_SP_ID = "spotify_client_id"
 K_SP_SECRET = "spotify_client_secret"
 
+# Dummy values shipped in spoty-rfid.env.example. If an install copied the
+# example verbatim, these end up as real (non-empty) env vars and would shadow
+# anything the portal saves to SQLite — trapping the box in setup mode. Treat
+# them as "unset" so the portal-saved value can take over.
+_PLACEHOLDERS = {
+    "123456:abc-your-bot-token",
+    "xxxxxxxxxxxxxxxx",
+}
+
+
+def _is_placeholder(v: Optional[str]) -> bool:
+    return v is not None and v.strip().lower() in _PLACEHOLDERS
+
 
 @dataclass
 class Config:
@@ -41,7 +54,7 @@ class Config:
     def load(cls, store: Store) -> "Config":
         def val(env_key: str, store_key: Optional[str] = None) -> Optional[str]:
             v = os.environ.get(env_key)
-            if v:
+            if v and not _is_placeholder(v):
                 return v
             return store.get_config(store_key) if store_key else None
 

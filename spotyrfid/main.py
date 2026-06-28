@@ -112,6 +112,16 @@ class App:
         log.info("spotify creds saved via portal")
         self._restart.set()
 
+    def _current_setup_values(self) -> dict:
+        # Read fresh (env + SQLite, with placeholders filtered) so the portal
+        # prefills whatever is actually in effect, not a stale snapshot.
+        cfg = Config.load(self.store)
+        return {
+            "token": cfg.telegram_token or "",
+            "client_id": cfg.spotify_client_id or "",
+            "client_secret": cfg.spotify_client_secret or "",
+        }
+
     async def _save_language(self, lang: str) -> None:
         # No restart needed: the portal re-renders in the new language right away
         # and the bot's Translator reads this value fresh on every message.
@@ -140,6 +150,7 @@ class App:
             on_telegram_token=self._save_telegram_token,
             on_spotify_creds=self._save_spotify_creds,
             on_language=self._save_language,
+            current_values=self._current_setup_values,
             redirect_uri=self.cfg.spotify_redirect_uri,
             port=self.cfg.web_port,
             enable_wifi=wifi_block,
