@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 
 from telegram.error import InvalidToken
 
@@ -33,7 +34,8 @@ from .store import Store
 from .web import WebServer
 
 logging.basicConfig(
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("aiohttp").setLevel(logging.WARNING)

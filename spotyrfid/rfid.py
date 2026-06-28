@@ -48,8 +48,12 @@ class RfidReader:
         buf: list[str] = []
         try:
             with open(self.device, "rb") as fh:
+                log.info("RFID reader thread reading %s", self.device)
                 while not self._stop.is_set():
                     report = fh.read(8)  # standard 8-byte keyboard report
+                    # Set LOG_LEVEL=DEBUG to see every raw report — tells you
+                    # whether the device sends data at all and in what layout.
+                    log.debug("hid report: %s", report.hex())
                     if not report or len(report) < 3:
                         continue
                     keycode = report[2]
@@ -62,6 +66,8 @@ class RfidReader:
                         self._emit(uid)
                     elif keycode in _HID_DIGITS:
                         buf.append(_HID_DIGITS[keycode])
+                    else:
+                        log.debug("ignored keycode 0x%02x", keycode)
         except FileNotFoundError:
             log.error("RFID device %s not found", self.device)
         except PermissionError:
