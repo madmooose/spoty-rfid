@@ -73,8 +73,15 @@ async def verify_telegram_token(token: str, *, timeout: float = 10.0) -> str:
         return "unreachable"
 
 # per-chat pending intent stored in chat_data
-PENDING_BIND = "pending_bind_uid"   # value: uid awaiting a URI
-PENDING_AUTH = "pending_auth"       # value: True while awaiting redirect URL
+PENDING_BIND = "pending_bind_uid"       # value: uid being bound
+PENDING_BIND_STAGE = "pending_bind_stage"  # "alias" then "uri"
+PENDING_BIND_ALIAS = "pending_bind_alias"  # collected alias / rebind default
+PENDING_AUTH = "pending_auth"           # value: True while awaiting redirect URL
+
+# Sentinels the user can send to skip naming (new tag) or keep the current
+# name (rebind). A leading "/" command can't reach the text handler (PTB's
+# ~filters.COMMAND), so we use plain dashes instead of e.g. /skip.
+_SKIP_TOKENS = {"-", "–", "—"}
 
 
 def normalize_uri(text: str) -> Optional[str]:
@@ -181,9 +188,12 @@ class Bot:
                 self.t("unknown_tag", uid=uid),
                 parse_mode=ParseMode.MARKDOWN,
             )
-        # remember which uid we're waiting on, per allowed chat
+        # Start a two-step bind (alias first, then URI) for each allowed chat.
         for chat_id in self._allowed():
-            self.app.chat_data[chat_id][PENDING_BIND] = uid
+            cd = self.app.chat_data[chat_id]
+            cd[PENDING_BIND] = uid
+            cd[PENDING_BIND_STAGE] = "alias"
+            cd.pop(PENDING_BIND_ALIAS, None)  # new tag has no default name
 
     # ---- command handlers ----------------------------------------------
     async def cmd_start(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -307,10 +317,14 @@ class Bot:
             await update.message.reply_text(self.t("rebind_usage"))
             return
         uid = ctx.args[0]
+        existing = self.store.get_tag(uid)
+        current = existing["label"] if existing and existing["label"] else None
         ctx.chat_data[PENDING_BIND] = uid
+        ctx.chat_data[PENDING_BIND_STAGE] = "alias"
+        ctx.chat_data[PENDING_BIND_ALIAS] = current  # default: keep current name
+        # Plain text (no Markdown): the current name is user-supplied.
         await update.message.reply_text(
-            self.t("rebind_prompt", uid=uid),
-            parse_mode=ParseMode.MARKDOWN,
+            self.t("rebind_prompt", uid=uid, name=current or self.t("name_none"))
         )
 
     async def cmd_unbind(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -326,9 +340,14 @@ class Bot:
         )
 
     async def cmd_cancel(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-        ctx.chat_data.pop(PENDING_BIND, None)
+        self._clear_bind(ctx)
         ctx.chat_data.pop(PENDING_AUTH, None)
         await update.message.reply_text(self.t("cancelled"))
+
+    @staticmethod
+    def _clear_bind(ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        for key in (PENDING_BIND, PENDING_BIND_STAGE, PENDING_BIND_ALIAS):
+            ctx.chat_data.pop(key, None)
 
     # ---- free-text handler (binding URIs, completing auth) --------------
     async def on_text(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -351,18 +370,36 @@ class Bot:
                 await update.message.reply_text(self.t("auth_failed", e=e))
             return
 
-        # binding a tag?
+        # binding a tag? two-step: alias first, then URI.
         uid = ctx.chat_data.get(PENDING_BIND)
         if uid:
+            stage = ctx.chat_data.get(PENDING_BIND_STAGE, "uri")
+            if stage == "alias":
+                default = ctx.chat_data.get(PENDING_BIND_ALIAS)  # None or current
+                alias = default if text in _SKIP_TOKENS else (text or None)
+                ctx.chat_data[PENDING_BIND_ALIAS] = alias
+                ctx.chat_data[PENDING_BIND_STAGE] = "uri"
+                # Plain text: the alias is user-supplied (may contain Markdown).
+                await update.message.reply_text(
+                    self.t("bind_ask_uri", name=alias or self.t("name_none"))
+                )
+                return
+            # stage == "uri"
             uri = normalize_uri(text)
             if not uri:
                 await update.message.reply_text(self.t("bind_invalid"))
                 return
-            self.store.bind_tag(uid, uri)
-            ctx.chat_data.pop(PENDING_BIND, None)
-            await update.message.reply_text(
-                self.t("bind_ok", uid=uid, uri=uri), parse_mode=ParseMode.MARKDOWN
-            )
+            alias = ctx.chat_data.get(PENDING_BIND_ALIAS)
+            self.store.bind_tag(uid, uri, alias)
+            self._clear_bind(ctx)
+            if alias:
+                await update.message.reply_text(
+                    self.t("bind_ok_named", uid=uid, uri=uri, alias=alias)
+                )
+            else:
+                await update.message.reply_text(
+                    self.t("bind_ok", uid=uid, uri=uri), parse_mode=ParseMode.MARKDOWN
+                )
             return
 
         await update.message.reply_text(self.t("nothing_pending"))

@@ -40,8 +40,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ack_confirmed": "✅ Connection confirmed. Running normally.",
         # ---- bot: unknown tag ----
         "unknown_tag": (
-            "🆕 Unknown tag `{uid}`.\nReply with a Spotify URI or link to bind "
-            "it, or /cancel."
+            "🆕 Unknown tag `{uid}`.\nFirst, send me a name for it (or `-` to "
+            "skip). Then I'll ask for the Spotify link. /cancel to abort."
         ),
         # ---- bot: help / start ----
         "start_help": (
@@ -92,7 +92,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "list_empty": "No tags bound yet.",
         # ---- bot: rebind / unbind ----
         "rebind_usage": "Usage: /rebind <uid>",
-        "rebind_prompt": "OK, send me the new Spotify URI/link for tag `{uid}`.",
+        "rebind_prompt": (
+            "✏️ Rebinding {uid} (current name: {name}).\n"
+            "Send a new name, or - to keep it. Then I'll ask for the Spotify "
+            "link. /cancel to abort."
+        ),
         "unbind_usage": "Usage: /unbind <uid>",
         "unbind_removed": "Removed.",
         "unbind_missing": "No such tag.",
@@ -101,7 +105,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "bind_invalid": (
             "That doesn't look like a Spotify URI or link. Try again or /cancel."
         ),
+        "bind_ask_uri": "Now send the Spotify URI or link for {name}, or /cancel.",
         "bind_ok": "Bound `{uid}` → {uri} ✅",
+        "bind_ok_named": "Bound {uid} ({alias}) → {uri} ✅",
+        "name_none": "—",
         "nothing_pending": "Nothing pending. /help for commands.",
         # ---- main: playback ----
         "tag_not_linked": "Tag scanned but Spotify isn't linked. Use /auth.",
@@ -181,8 +188,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ack_confirmed": "✅ Verbindung bestätigt. Läuft normal.",
         # ---- bot: unknown tag ----
         "unknown_tag": (
-            "🆕 Unbekannter Tag `{uid}`.\nAntworte mit einer Spotify-URI oder "
-            "einem Link, um ihn zu verknüpfen, oder /cancel."
+            "🆕 Unbekannter Tag `{uid}`.\nSende mir zuerst einen Namen dafür "
+            "(oder `-` zum Überspringen). Danach frage ich nach dem "
+            "Spotify-Link. /cancel zum Abbrechen."
         ),
         # ---- bot: help / start ----
         "start_help": (
@@ -245,7 +253,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # ---- bot: rebind / unbind ----
         "rebind_usage": "Verwendung: /rebind <uid>",
         "rebind_prompt": (
-            "OK, sende mir die neue Spotify-URI/den Link für Tag `{uid}`."
+            "✏️ Tag {uid} neu verknüpfen (aktueller Name: {name}).\n"
+            "Sende einen neuen Namen, oder -, um ihn zu behalten. Danach frage "
+            "ich nach dem Spotify-Link. /cancel zum Abbrechen."
         ),
         "unbind_usage": "Verwendung: /unbind <uid>",
         "unbind_removed": "Entfernt.",
@@ -256,7 +266,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
             "Das sieht nicht nach einer Spotify-URI oder einem Link aus. "
             "Versuche es erneut oder /cancel."
         ),
+        "bind_ask_uri": (
+            "Sende jetzt die Spotify-URI oder den Link für {name}, oder /cancel."
+        ),
         "bind_ok": "Verknüpft `{uid}` → {uri} ✅",
+        "bind_ok_named": "Verknüpft {uid} ({alias}) → {uri} ✅",
+        "name_none": "—",
         "nothing_pending": "Nichts ausstehend. /help für Befehle.",
         # ---- main: playback ----
         "tag_not_linked": (
