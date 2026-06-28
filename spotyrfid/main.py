@@ -63,16 +63,20 @@ class App:
         assert self.bot and self.spotify
         tag = self.store.get_tag(uid)
         if tag is None:
+            log.info("tag uid=%s is unknown — prompting to bind", uid)
             await self.bot.notify_unknown_tag(uid)
             return
         if not self.spotify.is_authenticated():
+            log.warning("tag uid=%s known but Spotify not linked", uid)
             for chat_id in self.bot._allowed():
                 await self.bot.app.bot.send_message(
                     chat_id, self.t("tag_not_linked")
                 )
             return
+        log.info("tag uid=%s -> %s", uid, tag["uri"])
         try:
             await asyncio.to_thread(self._apply_tag, tag["uri"])
+            log.info("playback started for uid=%s", uid)
         except Exception as e:  # noqa: BLE001
             log.exception("playback failed")
             for chat_id in self.bot._allowed():
@@ -98,9 +102,15 @@ class App:
 
     async def _rfid_consumer(self) -> None:
         assert self.reader
+        log.info("RFID consumer started")
         while True:
             uid = await self.reader.queue.get()
-            await self.handle_tag(uid)
+            log.info("tag tapped: uid=%s", uid)
+            # Guard the whole handler so one bad tap can't kill the consumer.
+            try:
+                await self.handle_tag(uid)
+            except Exception:  # noqa: BLE001
+                log.exception("handle_tag failed for uid=%s", uid)
 
     # ---- portal callbacks ----------------------------------------------
     async def _save_telegram_token(self, token: str) -> str | None:
