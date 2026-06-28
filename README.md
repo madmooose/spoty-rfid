@@ -45,14 +45,15 @@ forever after, unless you revoke the grant in your Spotify account.
 
 ```
 spotyrfid/
-  main.py      orchestrator — one asyncio loop (PTB owns it)
+  main.py      orchestrator — owns the asyncio loop directly (not PTB)
   bot.py       Telegram control plane (commands + conversational flows)
   spotify.py   playback control + SQLiteCacheHandler (the reauth fix)
   rfid.py      USB-HID reader thread -> asyncio queue
+  probe.py     standalone RFID diagnostic (python -m spotyrfid.probe)
   wifi.py      NetworkManager (nmcli) helpers + AP fallback
-  web.py       aiohttp: captive Wi-Fi page + OAuth callback catcher
-  store.py     SQLite: tag bindings, token, config
-  config.py    env-var configuration
+  web.py       aiohttp: portal (Wi-Fi + setup) + OAuth callback catcher
+  store.py     SQLite: tag bindings, token, config — source of truth
+  config.py    config loader (SQLite-primary, env as first-boot seed)
   i18n.py      translation catalog (English + German) + Translator
 ```
 
@@ -62,12 +63,20 @@ The four requested capabilities:
    30 s, the box raises a `SpotyBox` hotspot. Join it with a phone, open any
    page (captive), submit your home SSID + password. NetworkManager stores the
    profile and auto-reconnects on future boots.
-2. **Spotify auth via bot** — `/auth` sends an authorize URL. Approve on your
-   phone, paste the redirected URL back into the chat. Token saved to SQLite.
-3. **Unknown tag → request URI** — scanning an unbound tag DMs you; reply with a
-   `spotify:` URI or an `open.spotify.com` link (incl. `intl-xx` links) to bind.
-4. **Reset/rebind a tag** — `/rebind <uid>` then send a new URI; `/unbind <uid>`
-   to remove.
+2. **Spotify auth via bot** — `/auth` sends an authorize URL. Open it, click
+   **Agree**, then paste back the URL you're redirected to — the one containing
+   `?code=...`, **not** the authorize link itself (the bot warns you if you paste
+   the wrong one). Token saved to SQLite.
+3. **Unknown tag → name + URI** — scanning an unbound tag DMs you. It first asks
+   for a **name/alias** (or send `-` to skip), then for a `spotify:` URI or an
+   `open.spotify.com` link (incl. `intl-xx` links) to bind.
+4. **Reset/rebind a tag** — `/rebind <uid>` asks for a new name (send `-` to keep
+   the current one), then a new URI; `/unbind <uid>` to remove.
+
+You can test playback at any time with **`/play <uri|link>`** (or bare `/play`
+to resume) — it triggers the exact path a tag uses and reports the precise
+Spotify error if something's wrong, so it's the fastest way to tell an RFID
+problem apart from a Spotify/device one.
 
 ### Control tags (kept from the original)
 
@@ -105,13 +114,29 @@ the remaining manual steps (RFID reader IDs, one-time librespot OAuth).
 The sections below document what the installer does, for reference or manual
 setup.
 
-### 4. RFID reader permissions
+### 4. RFID reader permissions & stable device path
+
+Find your reader and grant the service user access. The probe tool lists every
+HID device with its vendor/product IDs:
+
+```bash
+python -m spotyrfid.probe            # list candidate /dev/hidraw* + vid/pid/name
+python -m spotyrfid.probe /dev/hidrawN   # watch one; tap a chip to see decoded UID
+```
+
+Then install the udev rule with your reader's real IDs. The rule both grants the
+`plugdev` group read access **and** creates a stable `/dev/rfid` symlink, so you
+don't depend on the `hidrawN` number (which can change across reboots/replugs):
+
 ```bash
 lsusb   # find your reader's ID, e.g. 16c0:27db
 sudo cp 50-spotybox-rfid.rules /etc/udev/rules.d/
-sudo nano /etc/udev/rules.d/50-spotybox-rfid.rules   # set VENDOR/PRODUCT
+sudo nano /etc/udev/rules.d/50-spotybox-rfid.rules   # set idVendor/idProduct
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
+
+The shipped rule adds `SYMLINK+="rfid"`; set `RFID_DEVICE=/dev/rfid` in the env
+file so the box always finds the reader regardless of enumeration order.
 
 ### 5. Service
 ```bash
@@ -124,10 +149,12 @@ sudo systemctl enable --now spoty-rfid
 1. Set up and authenticate the librespot speaker (see "The playback backend"
    below) — do this first so the box has a device to play to.
 2. Message your bot `/start` (first chat to do so becomes the owner).
-3. `/auth` → open the URL, approve, paste the redirected URL back.
+3. `/auth` → open the URL, approve, paste the **redirected** URL back (the one
+   with `?code=...`).
 4. `/devices` → confirm **SpotyBox** appears, then `/setdevice <id>` to pin it.
-5. `/status` to confirm everything's linked.
-6. Tap a new tag → reply with a Spotify link to bind it. Done.
+5. `/play <uri|link>` → confirm audio actually plays before involving tags.
+6. `/status` to confirm everything's linked.
+7. Tap a new tag → give it a name, then a Spotify link to bind it. Done.
 
 ## Startup behavior & the setup portal
 
@@ -167,16 +194,20 @@ translations are safe.
 
 ### Where secrets live
 
-Configuration is read **environment-variables-first, SQLite-fallback**:
+**SQLite (`store.db`) is the source of truth.** Configuration is read
+**SQLite-first, env as a first-boot seed**:
 
-- A declaratively-provisioned box sets everything in the systemd
-  `EnvironmentFile` (`.env`). Env always wins — it stays the GitOps source of
-  truth.
-- A box shipped blank has no env secrets; the portal writes the Telegram token
-  and Spotify credentials into the SQLite `config` table instead.
+- The portal writes the Telegram token and Spotify credentials into the SQLite
+  `config` table. These are authoritative — once saved, they always win.
+- Environment variables in the systemd `EnvironmentFile` (`.env`) are read only
+  when SQLite has no value yet, so you *can* pre-seed a fresh box. Placeholder
+  values (e.g. the ones in `spoty-rfid.env.example`) are ignored.
 
-So you can provision either way, and mixing is fine (env for the stable bits,
-portal for a field-replaced token). After the portal saves a secret, the
+This precedence is deliberate: an env value that outranked the portal would let a
+stale `.env` shadow the token you just saved and trap the box in setup mode. The
+portal also **validates** what you enter before saving — the Telegram token via
+`getMe` and the Spotify client ID/secret via the Client Credentials grant — so a
+typo is rejected immediately instead of failing later. After a save, the
 supervisor re-reads config and restarts the bot automatically — no manual
 restart.
 
@@ -288,11 +319,26 @@ If `/devices` shows nothing, librespot isn't logged in — check its journal
 
 ## Notes on the RFID reader
 
-`rfid.py` assumes a "keyboard-wedge" USB reader (types digits + Enter), decoding
-the standard 8-byte HID report. If your reader presents differently (raw bytes,
-serial, or a Pi GPIO module like MFRC522), replace `RfidReader._run` — it only
-needs to push a stable UID string onto `self.queue`. Everything downstream is
-reader-agnostic.
+`rfid.py` assumes a "keyboard-wedge" USB reader (types digits + Enter). It opens
+the device **unbuffered** (`buffering=0`) so each read returns exactly one HID
+report — a buffered reader concatenates reports and scrambles the keycode
+positions — and locates the keycode by scanning from byte 2, which tolerates an
+optional report-ID prefix. Set `LOG_LEVEL=DEBUG` to log every raw report.
+
+Debugging a reader that registers no taps:
+
+```bash
+sudo systemctl stop spoty-rfid                 # free the device
+python -m spotyrfid.probe                       # which /dev/hidrawN is it?
+python -m spotyrfid.probe /dev/hidrawN          # tap a chip; confirm a stable UID
+```
+
+If the decoded UID differs from what `/list` shows for a tag, just `/rebind` it.
+Pin the device with the udev symlink (see step 4) so the path is stable.
+
+If your reader presents differently (raw bytes, serial, or a Pi GPIO module like
+MFRC522), replace `RfidReader._run` — it only needs to push a stable UID string
+onto `self.queue`. Everything downstream is reader-agnostic.
 
 ## License
 

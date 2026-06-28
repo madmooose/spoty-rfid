@@ -116,10 +116,12 @@ acceptable for a single-purpose home device. (A passphrase would reintroduce a
 ## Two interfaces, clear boundary
 
 ### Telegram bot — the native runtime interface
-Everything for running the box: `/auth` (Spotify account authorization via the
-click-through redirect — nothing pasted), tag bind/rebind/unbind, `/list`,
-`/devices`, `/setdevice`, `/status`. Telegram authenticates implicitly (only
-allowlisted chats control the box), so no additional auth is needed.
+Everything for running the box: `/auth` (Spotify account authorization — open the
+link, approve, paste back the `?code=...` redirect URL; a wrong paste is caught
+and explained), tag bind/rebind/unbind (binding is a two-step prompt: name then
+URI; rebind offers the current name as default), `/list`, `/play` (test playback
+directly), `/devices`, `/setdevice`, `/status`. Telegram authenticates implicitly
+(only allowlisted chats control the box), so no additional auth is needed.
 
 ### Web portal — build-time setup + connectivity recovery only
 Carries exactly the things that either bootstrap connectivity or are awkward
@@ -128,6 +130,12 @@ build-time credentials:
 - Telegram bot token
 - Spotify client ID + secret, with a link to the Spotify dashboard and the exact
   loopback redirect URI to register
+
+Both credentials are **validated before saving** — the Telegram token via the
+`getMe` API, the Spotify ID/secret via the Client Credentials grant. A value
+Telegram/Spotify actively rejects is refused with a clear message; if the check
+can't reach the network (offline AP setup) it's saved anyway rather than block
+configuration. Saved fields are pre-filled when the portal reloads.
 
 The portal is **not** up during normal operation. Spotify *account* auth is NOT
 in the portal — that's `/auth` in the bot (a click, no secret pasted). Spotify
@@ -168,8 +176,10 @@ spotyrfid/
   main.py      Supervisor: owns the loop, runs the decision tree, lifecycle.
   bot.py       Telegram control plane: commands, conversational binding flows,
                owner allowlist (trust-on-first-use), startup hello + ack.
-  spotify.py   Web API playback control + SQLiteCacheHandler (the reauth fix).
+  spotify.py   Web API playback control + SQLiteCacheHandler (the reauth fix);
+               credential + auth-code validation helpers.
   rfid.py      USB-HID keyboard-wedge reader in a thread -> asyncio queue.
+  probe.py     Standalone RFID diagnostic (python -m spotyrfid.probe).
   wifi.py      NetworkManager (nmcli) helpers + AP fallback.
   web.py       Portal: Wi-Fi + token + Spotify-creds forms; OAuth callback;
                language selector.
@@ -184,8 +194,12 @@ Besides URI tags, a tag's value may be a reserved keyword: `play`, `pause`,
 Spotify URI. Bind via `/rebind <uid>` then send the keyword.
 
 ### RFID reader assumption
-Assumes a keyboard-wedge USB reader (types digits + Enter; standard 8-byte HID
-report). For a GPIO module (e.g. MFRC522), only `RfidReader._run` needs
+Assumes a keyboard-wedge USB reader (types digits + Enter). The device is opened
+**unbuffered** so each read is one HID report — buffering concatenates reports
+and corrupts the keycode positions — and the keycode is found by scanning from
+byte 2 (tolerating an optional report-ID prefix). `python -m spotyrfid.probe`
+identifies the device and shows decoded UIDs; a udev `SYMLINK+="rfid"` pins a
+stable path. For a GPIO module (e.g. MFRC522), only `RfidReader._run` needs
 replacing — it just pushes a UID string onto the queue; everything downstream is
 reader-agnostic.
 

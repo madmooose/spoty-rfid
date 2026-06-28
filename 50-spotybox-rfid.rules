@@ -1,5 +1,10 @@
 # Place at /etc/udev/rules.d/50-spotybox-rfid.rules
 # Replace VENDOR and PRODUCT with the values from `lsusb` for your reader
 # (the two hex numbers after "ID", e.g. ID 16c0:27db -> idVendor 16c0).
+# Find them quickly with: python -m spotyrfid.probe
 # Then: sudo udevadm control --reload-rules && sudo udevadm trigger
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="VENDOR", ATTRS{idProduct}=="PRODUCT", MODE="0660", GROUP="plugdev"
+#
+# This grants the plugdev group read access AND creates a stable /dev/rfid
+# symlink so you don't depend on the hidrawN number (it can change across
+# reboots). Set RFID_DEVICE=/dev/rfid in the env file to use it.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="VENDOR", ATTRS{idProduct}=="PRODUCT", MODE="0660", GROUP="plugdev", SYMLINK+="rfid"

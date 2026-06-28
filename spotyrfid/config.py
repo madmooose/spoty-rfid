@@ -1,13 +1,18 @@
-"""Configuration: environment variables first, SQLite config table as fallback.
+"""Configuration: SQLite config table is the source of truth; env vars seed it.
 
-Rationale: a declaratively-provisioned box sets everything via the systemd
-EnvironmentFile (.env), which always wins — that stays the GitOps source of
-truth. A box shipped blank has no env secrets; the setup portal writes them into
-the SQLite `config` table instead. Either path yields a usable Config.
+Rationale: this is a standalone box configured in the field through the setup
+portal, which writes secrets into the SQLite `config` table. Those portal-saved
+values are authoritative. Environment variables (systemd EnvironmentFile) are an
+optional first-boot *seed* only — read when SQLite has no value yet — so a box
+can be pre-provisioned, but anything saved via the portal always wins.
 
-Unlike before, missing secrets do NOT abort the process. We need to boot far
-enough to bring up the setup portal so the user can supply them. `is_complete()`
-tells the orchestrator whether the bot can start at all.
+(Precedence was deliberately chosen this way: an env value that outranks the
+portal would let a stale/placeholder .env trap the box in setup mode forever,
+shadowing the token the user just saved.)
+
+Missing secrets do NOT abort the process. We need to boot far enough to bring up
+the setup portal so the user can supply them. `is_complete()` tells the
+orchestrator whether the bot can start at all.
 """
 from __future__ import annotations
 
@@ -53,10 +58,16 @@ class Config:
     @classmethod
     def load(cls, store: Store) -> "Config":
         def val(env_key: str, store_key: Optional[str] = None) -> Optional[str]:
+            # SQLite (portal-saved) is the source of truth; env is only a seed
+            # used when SQLite has no value. Placeholder seeds count as unset.
+            if store_key:
+                v = store.get_config(store_key)
+                if v and not _is_placeholder(v):
+                    return v
             v = os.environ.get(env_key)
             if v and not _is_placeholder(v):
                 return v
-            return store.get_config(store_key) if store_key else None
+            return None
 
         return cls(
             telegram_token=val("TELEGRAM_TOKEN", K_TG_TOKEN),

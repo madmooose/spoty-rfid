@@ -5,7 +5,8 @@ The web server has three roles, all on the same port:
   1. Wi-Fi captive page (AP mode) — submit home SSID/password.
   2. Setup portal — enter Telegram token and Spotify credentials when the box
      is unconfigured or has lost its bot connection. Secrets are written to the
-     SQLite `config` table (env vars still take priority on next load).
+     SQLite `config` table, which is the source of truth (env vars only seed a
+     fresh box; saved values win on next load). Both are validated before saving.
   3. OAuth callback catcher on the loopback for Spotify linking.
 
 All page text is localised via a `Translator` (see i18n.py); the portal also
